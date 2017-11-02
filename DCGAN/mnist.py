@@ -162,7 +162,7 @@ class DCGAN(object):
                         metrics=['accuracy'])
         return self.AM
 
-    def train(self, batch_size=32, save_interval=0, epochs=100):
+    def train(self, batch_size=32, save_interval=0, epochs=100, debug=None):
         noise_input = np.random.uniform(-1.0, 1.0, size=[60, 100])
         # self.x_train = self.x_train[:5000]
 
@@ -203,9 +203,12 @@ class DCGAN(object):
                     log_mesg, self.a_loss[-1][0], self.a_loss[-1][1])
 
                 print(log_mesg)
-                if (i+1) % save_interval == 0:
+                if (i+1) % save_interval == 0 and debug:
                     self.plot_images(noise=noise_input, step=(e*nr_batches+i+1))
                     self.plot_learning(step=(e*nr_batches+i+1))
+
+            self.plot_images(noise=noise_input, step=(e + 1))
+            self.plot_learning(step=(e + 1))
             print('epoch took {}s'.format(time.time()-start_time))
             self.save_models(e)
 
@@ -236,13 +239,23 @@ class DCGAN(object):
             filename = "learning_%d.png" % step
 
             plt.figure(figsize=(16, 10))
+            plt.subplot(1, 2, 1)
             x = np.arange(len(self.a_loss))
             plt.plot(x, np.array(self.a_loss)[:, 0], label='adversary')
             plt.plot(x, run_mean(np.array(self.a_loss)[:, 0], 10), label='AM')
-            
+
             plt.plot(x, np.array(self.d_loss)[:,0], label='discriminator')
             plt.plot(x, run_mean(np.array(self.d_loss)[:, 0], 10), label='DM')
             plt.legend()
+            plt.subplot(1, 2, 2)
+            plt.plot(x, np.array(self.a_loss)[:, 1], label='adversary')
+            plt.plot(x, run_mean(np.array(self.a_loss)[:, 1], 10), label='AM')
+
+            plt.plot(x, np.array(self.d_loss)[:, 1], label='discriminator')
+            plt.plot(x, run_mean(np.array(self.d_loss)[:, 1], 10), label='DM')
+            plt.legend()
+
+
             plt.savefig(os.path.join(self.dir[0], filename))
             plt.close('all')
 
@@ -275,4 +288,5 @@ def get_current_dir():
 if __name__ == '__main__':
     np.random.seed(1) 
     foo = DCGAN(directory=get_current_dir())
-    foo.train(batch_size=32, save_interval=500)
+    foo.train(batch_size=32, save_interval=10, debug=True)
+    foo.train(batch_size=32, save_interval=10, debug=True)
