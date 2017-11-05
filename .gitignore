@@ -10,10 +10,12 @@ __pycache__/
 .idea/
 .vscode/
 
-#standard folders
+#standard folders and files
 models/
 mnist/
 images/
+test.ipynb
+
 
 
 # Distribution / packaging

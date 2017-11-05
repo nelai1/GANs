@@ -23,7 +23,7 @@ class DCGAN(object):
     """
     Main gan class
     """
-    def __init__(self, img_rows=28, img_cols=28, channel=1, directory=None):
+    def __init__(self, img_rows=28, img_cols=28, channel=1, directory=None, mode=1):
         self.dir = directory
         self.img_rows = img_rows
         self.img_cols = img_cols
@@ -36,7 +36,7 @@ class DCGAN(object):
         self.DM = None
         self.GM = None
 
-        self.initialize()
+        self.initialize(mode)
 
         (x_train, y_train), (_, _) = mnist.load_data()
         x_train = (x_train.astype(np.float32) - 127.5)/127.5
@@ -45,50 +45,52 @@ class DCGAN(object):
         self.x_train = x_train.reshape(-1, self.img_rows,
                                        self.img_cols, 1).astype(np.float32)
 
-    def initialize(self):
-        optimizer = Adam(lr=0.00014, beta_1=0.6)
-        optimizer2 = Adam(lr=0.0002, beta_1=0.6)
+    def initialize(self, mode=1):
+        optimizer_g = Adam(lr=0.0001, beta_1=0.6)
+        optimizer_d = Adam(lr=0.0002, beta_1=0.6)
 
-        self.GM = self.generator(optimizer)
-        self.DM = self.discriminator(optimizer2)
-        self.AM = self.adversarial_model(optimizer)
+        self.GM = self.generator(optimizer_g, mode=mode)
+        self.DM = self.discriminator(optimizer_d)
+        self.AM = self.adversarial_model(optimizer_g)
 
-    def generator(self, optimizer=None):
+    def generator(self, optimizer=None, mode=1):
         if self.GM:
             return self.GM
         GM = Sequential()
-        dropout = 0.5
-        depth = 224 
+        dropout = 0.6
+        depth = 224
         input_dim = 100
         mom = 0.9
         inits = initializers.RandomNormal(stddev=0.02)
 
         # In: 100
         # Out: 3x3x224
-        GM.add(Dense(5*5*depth, input_dim=input_dim, kernel_initializer=inits))
+        GM.add(Dense(7*7*depth, input_dim=input_dim, kernel_initializer=inits))
         GM.add(BatchNormalization(momentum=mom))
-        GM.add(Activation('relu'))
-        GM.add(Reshape((5, 5, depth)))
+        GM.add(LeakyReLU(alpha=0.2))
+        GM.add(Reshape((7, 7, depth)))
         GM.add(Dropout(dropout))
 
         # In: 4x4x224
         # Out: 7x7x112
-        GM.add(Conv2DTranspose(int(depth/2), 3, strides=(1, 1), padding='valid'))
+        GM.add(UpSampling2D())
+        GM.add(Conv2DTranspose(int(depth/2), 5, strides=(1, 1), padding='same'))
         GM.add(BatchNormalization(momentum=mom))
-        GM.add(Activation('relu'))
+        GM.add(LeakyReLU(alpha=0.2))
 
         # In: 7x7x112 
         # Out: 14x14x56
         GM.add(UpSampling2D())
         GM.add(Conv2DTranspose(int(depth/4), 5, strides=(1, 1), padding='same'))
         GM.add(BatchNormalization(momentum=mom))
-        GM.add(Activation('relu'))
+        GM.add(LeakyReLU(alpha=0.2))
 
         # In: 14x14x56 
         # Out: 28x28x56
-        GM.add(UpSampling2D())
-        # GM.add(Conv2DTranspose(1, 5, strides=(1, 1), padding='same'))
-        # GM.add(BatchNormalization(momentum=mom))
+        # GM.add(UpSampling2D())
+        if mode == 2:
+            GM.add(Conv2DTranspose(1, 5, strides=(1, 1), padding='same'))
+            GM.add(BatchNormalization(momentum=mom))
 
         # In: 28x28x56
         # Out: 28x28x1
@@ -108,26 +110,24 @@ class DCGAN(object):
         DM = Sequential()
         depth = 64
         dropout = 0.4
+        mom = 0.5
 
         # In: 28 x 28 x 1, depth = 1
         # Out: 14 x 14 x 1, depth=64
         input_shape = (self.img_rows, self.img_cols, self.channel)
         print('input shape', input_shape)
         DM.add(Conv2D(depth*1, 5, strides=2, input_shape=input_shape, padding='same'))
-        # DM.add(BatchNormalization(momentum=0.9))
-        # DM.add(BatchNormalization())
+        # DM.add(BatchNormalization(momentum=mom))
         DM.add(LeakyReLU(alpha=0.2))
         DM.add(Dropout(dropout))
 
         DM.add(Conv2D(depth*2, 5, strides=2, padding='same'))
-        # DM.add(BatchNormalization(momentum=0.9))
-        # DM.add(BatchNormalization())
+        # DM.add(BatchNormalization(momentum=mom))
         DM.add(LeakyReLU(alpha=0.2))
         DM.add(Dropout(dropout))
 
         DM.add(Conv2D(depth*4, 5, strides=2, padding='same'))
-        # DM.add(BatchNormalization(momentum=0.9))
-        # DM.add(BatchNormalization())
+        # DM.add(BatchNormalization(momentum=mom))
         DM.add(LeakyReLU(alpha=0.2))
         DM.add(Dropout(dropout))
 
@@ -241,20 +241,19 @@ class DCGAN(object):
             plt.figure(figsize=(16, 10))
             plt.subplot(1, 2, 1)
             x = np.arange(len(self.a_loss))
-            plt.plot(x, np.array(self.a_loss)[:, 0], label='adversary')
-            plt.plot(x, run_mean(np.array(self.a_loss)[:, 0], 10), label='AM')
+            plt.plot(x, np.array(self.a_loss)[:, 0], 'c', label='adversary')
+            plt.plot(x, run_mean(np.array(self.a_loss)[:, 0], 10), 'b', label='AM')
 
-            plt.plot(x, np.array(self.d_loss)[:,0], label='discriminator')
-            plt.plot(x, run_mean(np.array(self.d_loss)[:, 0], 10), label='DM')
+            plt.plot(x, np.array(self.d_loss)[:, 0], 'y', label='discriminator')
+            plt.plot(x, run_mean(np.array(self.d_loss)[:, 0], 10), 'r', label='DM')
             plt.legend()
             plt.subplot(1, 2, 2)
-            plt.plot(x, np.array(self.a_loss)[:, 1], label='adversary')
-            plt.plot(x, run_mean(np.array(self.a_loss)[:, 1], 10), label='AM')
+            plt.plot(x, np.array(self.a_loss)[:, 1], 'c', label='adversary')
+            plt.plot(x, run_mean(np.array(self.a_loss)[:, 1], 10), 'b', label='AM')
 
-            plt.plot(x, np.array(self.d_loss)[:, 1], label='discriminator')
-            plt.plot(x, run_mean(np.array(self.d_loss)[:, 1], 10), label='DM')
+            plt.plot(x, np.array(self.d_loss)[:, 1], 'y', label='discriminator')
+            plt.plot(x, run_mean(np.array(self.d_loss)[:, 1], 10), 'r', label='DM')
             plt.legend()
-
 
             plt.savefig(os.path.join(self.dir[0], filename))
             plt.close('all')
@@ -287,6 +286,6 @@ def get_current_dir():
 
 if __name__ == '__main__':
     np.random.seed(1) 
-    foo = DCGAN(directory=get_current_dir())
-    foo.train(batch_size=32, save_interval=10, debug=True)
-    foo.train(batch_size=32, save_interval=10, debug=True)
+    foo = DCGAN(directory=get_current_dir(), mode=2)
+    # foo.train(batch_size=32, save_interval=10, debug=False)
+    foo.train(batch_size=64, save_interval=10, debug=False)
