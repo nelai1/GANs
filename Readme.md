@@ -9,7 +9,7 @@ The images show the learning. The model was trained on the google cloud computin
 K80. Every batch consists of 32 samples. Training was aborted after 12 epochs. (Every epoch consist of 60.000pictures/batch_size ~1900 iterations)
 
 **Learning curves** 
-![Loss curves after 12 epochs](examples/losses.png)
+![Loss curves after 12 epochs](DCGAN/examples/losses.png)
 
 ##Results:
 * The network is learning
@@ -18,7 +18,7 @@ K80. Every batch consists of 32 samples. Training was aborted after 12 epochs. (
 
 **Generated Numbers**                    | **Mnist Numbers**
 :---------------------------------------------------------:|:---------------------------------------------------:
-![foo bar](examples/mnist_gen.png) | ![foo bar](examples/mnist.png)
+![generated](DCGAN/examples/mnist_gen.png) | ![mnist](DCGAN/examples/mnist.png)
 
 The generator and discriminator model can be found in the examples folder.
 ```python
