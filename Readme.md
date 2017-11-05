@@ -11,7 +11,7 @@ K80. Every batch consists of 32 samples. Training was aborted after 12 epochs. (
 **Learning curves** 
 ![Loss curves after 12 epochs](DCGAN/examples/losses.png)
 
-##Results:
+## Thoughts:
 * The network is learning
 * No extended tuning was performed, there is definitely more to get out
 * images below show the generated (left) and original (right) dataset after 12 epochs
